@@ -16,7 +16,6 @@ const studentSchema = mongoose.Schema({
             type: String,
             required:true
         }
-
     },
     subject:{
         type:Array,

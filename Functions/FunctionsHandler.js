@@ -4,6 +4,7 @@
 //Import all models for use all the time
 const student = require('../models/Student');
 const JSONStream = require( "JSONStream" );
+const async = require('async');
 
 
 //This function is usued to adhere to post for notes
@@ -21,10 +22,20 @@ exports.addStudent = async (req , res , next)=>{
 
 exports.getStudents = async (req , res , next)=>{
     try{
-     //Use streams to get data efficiently
-    const stream = student.find().cursor();
-    //Pipe to respone
-    stream.pipe(JSONStream.stringify()).pipe(res.type('json'));
+    console.log('called data');
+    
+    const skip = parseInt(req.query.skip);
+    const limit = parseInt(req.query.limit);
+
+    
+     // execute query with page and limit values
+    const students = await student.find()
+    .skip(skip)
+    .limit(limit)
+    .exec();
+
+    //Send to res
+    res.status(200).json(students);
     }catch(err){
       console.log(err);
     }
@@ -42,7 +53,7 @@ exports.deletePost = async (req , res , next)=>{
 }
 
 
-exports.topThreeSchools = async(req , res , next)=>{
+exports.topThreeSchools = async (req , res , next)=>{
    try {
 
     console.log(req.query.result_type );
@@ -77,16 +88,16 @@ exports.topThreeSchools = async(req , res , next)=>{
         }
     ]).exec();
 
-    res.status(200).send(data);
+    return data;
    } catch (error) {
        res.status(400).send(error);
    }
 }
 
-exports.topThreeSchoolsByDistrict = async(req , res , next)=>{
+exports.topThreeSchoolsByDistrict = async (req , res , next)=>{
      
     try {
-        const data  = await student.aggregate([
+        const data  =  await student.aggregate([
             {
                 $match :{
                     'school.district' : req.query.district
@@ -126,14 +137,14 @@ exports.topThreeSchoolsByDistrict = async(req , res , next)=>{
     
     ]).exec();
 
-    res.status(200).send(data);
+    return data
 
     } catch (error) {
         res.status(400).send(error);
     }
 }
 
-exports.topThreeStudents = async(req , res , next)=>{
+exports.topThreeStudents = async (req , res , next)=>{
 
     //Get top 3 students
     try{
@@ -161,7 +172,7 @@ exports.topThreeStudents = async(req , res , next)=>{
             }
     
         ]).exec();
-        res.send(data);
+        return data;
     }catch(error){
         console.log(error);
         res.status(400).send(error);
@@ -199,7 +210,7 @@ exports.topTenStudentsByDistrict = async(req , res , next)=>{
             }
     
         ]).exec();
-        res.send(data);
+        return data;
     }catch(error){
         console.log(error);
         res.status(400).send(error);
@@ -209,8 +220,7 @@ exports.topTenStudentsByDistrict = async(req , res , next)=>{
 
 }
 
-
-exports.topTenStudentInSchool = async(req , res , next)=>{
+exports.topTenStudentInSchool = async (req , res , next)=>{
 
     //Get top 3 students
     try{
@@ -240,7 +250,7 @@ exports.topTenStudentInSchool = async(req , res , next)=>{
             }
     
         ]).exec();
-        res.send(data);
+        return data;
     }catch(error){
         console.log(error);
         res.status(400).send(error);
@@ -250,8 +260,7 @@ exports.topTenStudentInSchool = async(req , res , next)=>{
 
 }
 
-
-exports.BestStudent = async(req , res , next)=>{
+exports.BestStudent = async (req , res , next)=>{
 
     //Get top 3 students
     try{
@@ -280,24 +289,22 @@ exports.BestStudent = async(req , res , next)=>{
             }
     
         ]).exec();
-        res.send(data);
+        return data;
     }catch(error){
         console.log(error);
         res.status(400).send(error);
     }
 
-    
+    }
 
-}
-
-exports.BestStudentBySubject = async(req , res , next)=>{
+exports.BestStudentBySubject = async (req , res , next)=>{
 
     console.log(req.query.name);
     //Get top 3 students
     try{
         const data = await student.aggregate([
             {
-                $match: {'subject.subject' : req.query.name}
+                $match: {'subject.subject' : req.query.subject}
             },
 
             {
@@ -310,31 +317,57 @@ exports.BestStudentBySubject = async(req , res , next)=>{
                             cond: {$eq: ['$$requiredSubject.subject', req.query.name]}
                         }
                     },
-                    marks : {
-                        $arrayElemAt: [ "$requiredSubject", 0 ]
+                    name_of_student : 1,
+                    school : 1
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    requestedSubjectMarks : {
+                        $cond : {
+                            if :{$eq :[req.query.result_type  , 'annual']},
+                            then :{
+                                $arrayElemAt: [ "$requestedSubjectMarks.annual", 0 ]
+                            },
+                            else : {
+                                $arrayElemAt: [ "$requestedSubjectMarks.annual", 0 ]
+                            }
+                        }
                     } ,
                     name_of_student : 1,
                     school : 1
                 }
             },
-
-           
              //now sort in decending
              { $sort :{"requestedSubjectMarks" : -1}},
              //limit the results to
              {
-                 $limit : 3
+                 $limit : 5
              }
-     
-
-    
         ]).exec();
-        res.send(data);
+        return data;
     }catch(error){
         console.log(error);
         res.status(400).send(error);
     }
 
-    
+}
 
+
+exports.getAllAnalytics = (req , res , next)=>{
+    
+    async.parallel({
+        topThreeSchools : exports.topThreeSchools.bind(null , req , res),
+        topTenStudentInSchool :exports.topTenStudentInSchool.bind(null , req , res),
+        topThreeStudents  : exports.topThreeStudents.bind(null , req , res),
+        topTenStudentsByDistrict : exports.topTenStudentsByDistrict.bind(null , req , res),
+        BestStudentBySubject : exports.BestStudentBySubject.bind(null , req ,res),
+        topThreeSchoolsByDistrict :exports.topThreeSchoolsByDistrict.bind(null ,req ,res),
+    },
+      function(err, results) {
+        console.log(results);
+        res.send(results);
+        // results is now equal to [1, 2, 3]
+      });
 }

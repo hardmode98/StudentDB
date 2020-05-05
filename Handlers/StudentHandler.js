@@ -11,8 +11,8 @@ router.get('/topThreeSchoolsByDistrict' , controller.topThreeSchoolsByDistrict);
 router.get('/top10StudentsByDistrict' , controller.topTenStudentsByDistrict);
 router.get('/topStudentsInSchool' , controller.topTenStudentInSchool);
 router.get('/bestStudent' , controller.BestStudent);
-router.get('/bestStudentbysubject' , controller.BestStudentBySubject);
-
+router.get('/bestStudentbysubject' , controller.BestStudent);
+router.get('/getAllAnalytics' , controller.getAllAnalytics);
 
 
 module.exports = router;
