@@ -20,15 +20,23 @@ app.get('/' , (req , res)=>{
 });
 
 
-//Connect to database
-mongoose.connect(process.env.DB_CONNECTION,{useNewUrlParser :true , useUnifiedTopology: true},  ).then(()=>{
-//Port listen
-   app.listen(3000);
-    console.log("Connected");
-})
-.catch((err)=>{
-    console.log(err);
-});
+//Handle reconnection also 
+var connectHandleCrash  = function(){
+    mongoose.connect(process.env.DB_CONNECTION,{useNewUrlParser :true , useUnifiedTopology: true  },  ).then(()=>{
+        //Port listen
+           app.listen(3000);
+            console.log("Connected");
+        })
+        .catch((err)=>{
+            if (err) {
+                console.error('Failed to connect to mongo on startup - retrying in 5 sec', err);
+                setTimeout(connectHandleCrash, 5000);
+              }    
+        });
+}
+
+//Connect
+connectHandleCrash();
 
 
 

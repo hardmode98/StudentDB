@@ -3,7 +3,6 @@
 
 //Import all models for use all the time
 const student = require('../models/Student');
-const JSONStream = require( "JSONStream" );
 const async = require('async');
 
 
@@ -27,17 +26,21 @@ exports.getStudents = async (req , res , next)=>{
     const skip = parseInt(req.query.skip);
     const limit = parseInt(req.query.limit);
 
+    console.log(skip);
+    console.log(limit);
     
      // execute query with page and limit values
     const students = await student.find()
     .skip(skip)
     .limit(limit)
     .exec();
+    console.log(students);
 
     //Send to res
     res.status(200).json(students);
     }catch(err){
       console.log(err);
+      res.status(400).send(err);
     }
 }
 
@@ -49,6 +52,8 @@ exports.deletePost = async (req , res , next)=>{
         console.log("Deleted");
     } catch (err) {
         console.log(err);
+        res.status(400).send(err);
+
     }
 }
 
@@ -84,12 +89,13 @@ exports.topThreeSchools = async (req , res , next)=>{
             $sort : {avg : -1}
         },
         {
-            $limit : 6
+            $limit : 3
         }
     ]).exec();
 
     return data;
    } catch (error) {
+       console.log(err);
        res.status(400).send(error);
    }
 }
@@ -299,8 +305,6 @@ exports.BestStudent = async (req , res , next)=>{
 
 exports.BestStudentBySubject = async (req , res , next)=>{
 
-    console.log(req.query.name);
-    //Get top 3 students
     try{
         const data = await student.aggregate([
             {
@@ -314,7 +318,7 @@ exports.BestStudentBySubject = async (req , res , next)=>{
                         $filter: {
                             input: '$subject',
                             as: 'requiredSubject',
-                            cond: {$eq: ['$$requiredSubject.subject', req.query.name]}
+                            cond: {$eq: ['$$requiredSubject.subject', req.query.subject]}
                         }
                     },
                     name_of_student : 1,
@@ -356,7 +360,7 @@ exports.BestStudentBySubject = async (req , res , next)=>{
 
 
 exports.getAllAnalytics = (req , res , next)=>{
-    
+    //run all analytics functions parallely
     async.parallel({
         topThreeSchools : exports.topThreeSchools.bind(null , req , res),
         topTenStudentInSchool :exports.topTenStudentInSchool.bind(null , req , res),
@@ -366,8 +370,11 @@ exports.getAllAnalytics = (req , res , next)=>{
         topThreeSchoolsByDistrict :exports.topThreeSchoolsByDistrict.bind(null ,req ,res),
     },
       function(err, results) {
-        console.log(results);
+        
+        //Handle error for response
+        if(!err)
         res.send(results);
-        // results is now equal to [1, 2, 3]
+        else res.status(400).send(err);
+
       });
 }
