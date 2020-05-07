@@ -299,8 +299,6 @@ exports.BestStudent = async (req , res , next)=>{
 
 exports.BestStudentBySubject = async (req , res , next)=>{
 
-    console.log(req.query.name);
-    //Get top 3 students
     try{
         const data = await student.aggregate([
             {
@@ -314,7 +312,7 @@ exports.BestStudentBySubject = async (req , res , next)=>{
                         $filter: {
                             input: '$subject',
                             as: 'requiredSubject',
-                            cond: {$eq: ['$$requiredSubject.subject', req.query.name]}
+                            cond: {$eq: ['$$requiredSubject.subject', req.query.subject]}
                         }
                     },
                     name_of_student : 1,
@@ -356,7 +354,7 @@ exports.BestStudentBySubject = async (req , res , next)=>{
 
 
 exports.getAllAnalytics = (req , res , next)=>{
-    
+    //run all analytics functions parallely
     async.parallel({
         topThreeSchools : exports.topThreeSchools.bind(null , req , res),
         topTenStudentInSchool :exports.topTenStudentInSchool.bind(null , req , res),
@@ -368,6 +366,5 @@ exports.getAllAnalytics = (req , res , next)=>{
       function(err, results) {
         console.log(results);
         res.send(results);
-        // results is now equal to [1, 2, 3]
       });
 }
